@@ -1,0 +1,5 @@
+{
+  "/operator/page": "app/operator/page.js",
+  "/operator/route/page": "app/operator/route/page.js",
+  "/page": "app/page.js"
+}
