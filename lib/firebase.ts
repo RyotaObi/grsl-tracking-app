@@ -280,6 +280,7 @@ export async function getCurrentScheduleStatus(): Promise<{
     startTime: string
     endTime: string
     startLocation: string
+    routeType: "循環ルート" | "フリー運行"
   }
 } | null> {
   try {
@@ -321,6 +322,7 @@ async function findNextOperation(fromDate: Date): Promise<
       startTime: string
       endTime: string
       startLocation: string
+      routeType: "循環ルート" | "フリー運行"
     }
   | undefined
 > {
@@ -357,6 +359,7 @@ async function findNextOperation(fromDate: Date): Promise<
             startTime: nextSchedule.startTime,
             endTime: nextSchedule.endTime,
             startLocation: nextSchedule.startLocation || "ヤンマー前",
+            routeType: nextSchedule.routeType,
           }
         }
         // 今日の運行時間は過ぎているので次の日を探す
@@ -371,6 +374,7 @@ async function findNextOperation(fromDate: Date): Promise<
         startTime: firstSchedule.startTime,
         endTime: firstSchedule.endTime,
         startLocation: firstSchedule.startLocation || "ヤンマー前",
+        routeType: firstSchedule.routeType,
       }
     }
 

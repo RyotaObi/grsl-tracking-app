@@ -23,6 +23,7 @@ export default function Home() {
     startTime: string
     endTime: string
     startLocation: string
+    routeType: "循環ルート" | "フリー運行"
   } | null>(null)
 
   // 今日の日付からコレクション名を生成
@@ -303,7 +304,9 @@ export default function Home() {
             <div style={{ fontSize: "24px", fontWeight: "700", marginTop: "8px", lineHeight: "1.4" }}>
               {nextOperation.date}({nextOperation.dayOfWeek})[{nextOperation.startTime}~{nextOperation.endTime}]
             </div>
-            <div style={{ fontSize: "20px", fontWeight: "500", marginTop: "8px" }}>です</div>
+            <div style={{ fontSize: "18px", fontWeight: "600", marginTop: "8px", color: "#1f2937" }}>
+              {nextOperation.routeType}
+            </div>
             <div style={{ fontSize: "18px", marginTop: "16px", color: "#000" }}>
               スタート地点は{nextOperation.startLocation}です
             </div>
