@@ -82,10 +82,17 @@ export default function Map({ locations, plannedRoute, onMapReady, userLocation 
   }, [onMapReady, leafletRef.current])
 
   useEffect(() => {
-    if (!mapRef.current || !plannedRoute || plannedRoute.length === 0 || !leafletRef.current) return
+    if (!mapRef.current || !leafletRef.current) return
 
+    // 既存のルートレイヤーを削除
     if (routeLayerRef.current) {
       routeLayerRef.current.remove()
+      routeLayerRef.current = null
+    }
+
+    // ルートが空の場合はここで終了
+    if (!plannedRoute || plannedRoute.length === 0) {
+      return
     }
 
     const updateRouteStyle = () => {

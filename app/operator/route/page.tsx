@@ -39,6 +39,7 @@ export default function RouteManagement() {
   const [routeSource, setRouteSource] = useState<"saved" | "create">("saved")
   const [savedRoutes, setSavedRoutes] = useState<{ id: string; name: string; pointCount: number }[]>([])
   const [selectedSavedRouteId, setSelectedSavedRouteId] = useState<string | null>(null)
+  const [currentRouteIndex, setCurrentRouteIndex] = useState(0) // 表示中のルートのインデックス
   const [baseRouteId, setBaseRouteId] = useState<string | null>(null)
   const [baseRouteName, setBaseRouteName] = useState<string | null>(null)
   const [isMobile, setIsMobile] = useState(false)
@@ -64,9 +65,13 @@ export default function RouteManagement() {
   useEffect(() => {
     async function loadSavedRoutesList() {
       const routes = await getSavedRoutes()
-      // 循環ルート1のみを表示
-      const filteredRoutes = routes.filter((route) => route.id === "循環ルート1" || route.name === "循環ルート1")
-      setSavedRoutes(filteredRoutes)
+      // すべてのルートを表示
+      setSavedRoutes(routes)
+      // 最初のルートを選択
+      if (routes.length > 0 && !selectedSavedRouteId) {
+        setSelectedSavedRouteId(routes[0].id)
+        setCurrentRouteIndex(0)
+      }
     }
     loadSavedRoutesList()
   }, [])
@@ -75,6 +80,7 @@ export default function RouteManagement() {
     // 保存済みルートが読み込まれ、routeSourceが"saved"で選択されていない場合、最初のルートを自動選択
     if (savedRoutes.length > 0 && routeSource === "saved" && !selectedSavedRouteId) {
       setSelectedSavedRouteId(savedRoutes[0].id)
+      setCurrentRouteIndex(0)
     }
   }, [savedRoutes, routeSource, selectedSavedRouteId])
 
@@ -127,8 +133,16 @@ export default function RouteManagement() {
     }
     if (savedRoutes.length > 0 && !selectedSavedRouteId) {
       setSelectedSavedRouteId(savedRoutes[0].id)
+      setCurrentRouteIndex(0)
     } else if (selectedSavedRouteId && !savedRoutes.find((route) => route.id === selectedSavedRouteId)) {
       setSelectedSavedRouteId(savedRoutes[0] ? savedRoutes[0].id : null)
+      setCurrentRouteIndex(0)
+    } else if (selectedSavedRouteId) {
+      // selectedSavedRouteIdが変更された時に、currentRouteIndexも更新
+      const index = savedRoutes.findIndex((route) => route.id === selectedSavedRouteId)
+      if (index !== -1 && index !== currentRouteIndex) {
+        setCurrentRouteIndex(index)
+      }
     }
   }, [routeSource, savedRoutes, selectedSavedRouteId])
 
@@ -249,6 +263,45 @@ export default function RouteManagement() {
     setIsUsingOriginalBase(true)
   }
 
+  async function handleRegisterRoute() {
+    if (routeSource !== "create" || editedRoute.length === 0) {
+      setMessage("ルートが空です。ポイントを追加してください。")
+      return
+    }
+
+    const trimmedName = customRouteName.trim()
+    const routeId = trimmedName || `route-${Date.now()}`
+    
+    // 日付を計算
+    const now = new Date()
+    const dateStr = `${now.getFullYear()}年${String(now.getMonth() + 1).padStart(2, "0")}月${String(now.getDate()).padStart(2, "0")}日`
+    const routeName = trimmedName || `${dateStr}のルート`
+
+    setSaving(true)
+    const success = await saveCustomRoute(routeId, editedRoute, { name: routeName })
+    
+    if (!success) {
+      setMessage("ルートの保存に失敗しました")
+      setSaving(false)
+      return
+    }
+
+    // 保存成功後、編集モードを終了
+    setHasEdits(false)
+    setCustomRouteName("")
+    setBaseRouteId(routeId)
+    setBaseRouteName(routeName)
+    setIsUsingOriginalBase(true)
+    originalRouteRef.current = [...editedRoute]
+    setIsEditing(false)
+    setMessage(`ルート「${routeName}」を保存しました`)
+    setSaving(false)
+
+      // 保存済みルートリストを更新
+      const routes = await getSavedRoutes()
+      setSavedRoutes(routes)
+  }
+
   function handleStartFromBlank() {
     originalRouteRef.current = []
     setEditedRoute([])
@@ -299,8 +352,7 @@ export default function RouteManagement() {
       if (shouldGenerateNewId) {
         setCustomRouteName("")
         const routes = await getSavedRoutes()
-        const filteredRoutes = routes.filter((route) => route.id === "循環ルート1" || route.name === "循環ルート1")
-        setSavedRoutes(filteredRoutes)
+        setSavedRoutes(routes)
       }
     } else {
       setMessage("ルートの設定に失敗しました")
@@ -374,12 +426,9 @@ export default function RouteManagement() {
   const selectedSavedRoute = savedRoutes.find((route) => route.id === selectedSavedRouteId) || null
 
   const routeCoordinates = useMemo(() => {
-    // 新規ルート作成時は常に空配列を返す
-    if (routeSource === "create") {
-      return []
-    }
+    // 編集されたルートを返す（新規作成時も含む）
     return editedRoute
-  }, [routeSource, editedRoute])
+  }, [editedRoute])
 
   return (
     <div style={{ width: "100%", height: "100%", position: "relative" }}>
@@ -475,9 +524,10 @@ export default function RouteManagement() {
           })}
         </div>
 
+        {routeSource === "saved" && (
         <div
           style={{
-            width: "100%",
+            width: "60%",
             maxWidth: 720,
             backgroundColor: "rgba(255, 255, 255, 0.95)",
             borderRadius: 16,
@@ -485,58 +535,70 @@ export default function RouteManagement() {
             boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)",
           }}
         >
-          {routeSource === "create" ? (
-            <div style={{ textAlign: "center" }}>
-              <div style={{ fontSize: 18, fontWeight: 700, color: "#1f2937" }}>新規ルート作成</div>
-              <div style={{ fontSize: 14, color: "#6b7280", marginTop: 4 }}>{editedRoute.length}ポイント</div>
-            </div>
-          ) : (
-            <div>
-              <div style={{ fontSize: 16, fontWeight: 700, color: "#1f2937", marginBottom: 12 }}>保存済みルート</div>
-              {savedRoutes.length === 0 ? (
-                <p style={{ fontSize: 14, color: "#6b7280" }}>保存されたルートがありません。新規作成してください。</p>
-              ) : (
-                <>
-                  <div style={{ fontSize: 14, color: "#4b5563", marginBottom: 12 }}>
-                    {selectedSavedRoute ? selectedSavedRoute.name : "ルートを選択"}
-                  </div>
-                  <div
+          <div>
+            {savedRoutes.length === 0 ? (
+              <p style={{ fontSize: 14, color: "#6b7280" }}>保存されたルートがありません。新規作成してください。</p>
+            ) : (
+              <>
+                <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 12 }}>
+                  <button
+                    onClick={() => {
+                      const prevIndex = currentRouteIndex > 0 ? currentRouteIndex - 1 : savedRoutes.length - 1
+                      setCurrentRouteIndex(prevIndex)
+                      setSelectedSavedRouteId(savedRoutes[prevIndex].id)
+                    }}
+                    disabled={savedRoutes.length <= 1}
                     style={{
+                      width: 36,
+                      height: 36,
+                      borderRadius: 8,
+                      border: "1px solid #d1d5db",
+                      backgroundColor: savedRoutes.length <= 1 ? "#f3f4f6" : "white",
+                      cursor: savedRoutes.length <= 1 ? "not-allowed" : "pointer",
                       display: "flex",
-                      flexWrap: "wrap",
-                      gap: 8,
-                      maxHeight: 160,
-                      overflowY: "auto",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      opacity: savedRoutes.length <= 1 ? 0.5 : 1,
                     }}
                   >
-                    {savedRoutes.map((route) => {
-                      const active = route.id === selectedSavedRouteId
-                      return (
-                        <button
-                          key={route.id}
-                          onClick={() => setSelectedSavedRouteId(route.id)}
-                          style={{
-                            flex: "1 1 200px",
-                            padding: "10px 12px",
-                            borderRadius: 12,
-                            border: "1px solid",
-                            borderColor: active ? "#2563eb" : "#d1d5db",
-                            backgroundColor: active ? "rgba(37,99,235,0.1)" : "white",
-                            cursor: "pointer",
-                            textAlign: "left",
-                          }}
-                        >
-                          <div style={{ fontWeight: 600, color: active ? "#1d4ed8" : "#1f2937" }}>{route.name}</div>
-                          <div style={{ fontSize: 12, color: "#6b7280" }}>{route.pointCount}ポイント</div>
-                        </button>
-                      )
-                    })}
+                    <ChevronLeft size={25} color={savedRoutes.length <= 1 ? "#9ca3af" : "#1f2937"} />
+                  </button>
+                  <div style={{ flex: 1, textAlign: "center" }}>
+                    <div style={{ fontSize: 18, fontWeight: 600, color: "#1f2937", marginBottom: 4 }}>
+                      {savedRoutes[currentRouteIndex]?.name || "ルートを選択"}
+                    </div>
+                    <div style={{ fontSize: 11, color: "#9ca3af", marginTop: 4 }}>
+                      {currentRouteIndex + 1} / {savedRoutes.length}
+                    </div>
                   </div>
-                </>
-              )}
-            </div>
-          )}
+                  <button
+                    onClick={() => {
+                      const nextIndex = currentRouteIndex < savedRoutes.length - 1 ? currentRouteIndex + 1 : 0
+                      setCurrentRouteIndex(nextIndex)
+                      setSelectedSavedRouteId(savedRoutes[nextIndex].id)
+                    }}
+                    disabled={savedRoutes.length <= 1}
+                    style={{
+                      width: 36,
+                      height: 36,
+                      borderRadius: 8,
+                      border: "1px solid #d1d5db",
+                      backgroundColor: savedRoutes.length <= 1 ? "#f3f4f6" : "white",
+                      cursor: savedRoutes.length <= 1 ? "not-allowed" : "pointer",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      opacity: savedRoutes.length <= 1 ? 0.5 : 1,
+                    }}
+                  >
+                    <ChevronRight size={25} color={savedRoutes.length <= 1 ? "#9ca3af" : "#1f2937"} />
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
         </div>
+        )}
       </div>
 
       {/* Editing Panel */}
@@ -544,7 +606,7 @@ export default function RouteManagement() {
         <div
           style={{
             position: "fixed",
-            bottom: isMobile ? 120 : 200,
+            bottom: isMobile ? 120 : 180,
             left: isMobile ? 8 : 16,
             right: isMobile ? 8 : 16,
             zIndex: 1000,
@@ -555,89 +617,95 @@ export default function RouteManagement() {
         <div
           style={{
             width: "100%",
-            maxWidth: isMobile ? "100%" : 480,
+            maxWidth: isMobile ? "100%" : 360,
             backgroundColor: "rgba(255, 255, 255, 0.95)",
-            borderRadius: isMobile ? 12 : 16,
-            padding: isMobile ? 12 : 16,
+            borderRadius: isMobile ? 10 : 12,
+            padding: isMobile ? 10 : 12,
             boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1)",
           }}
         >
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: isMobile ? 8 : 12 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: isMobile ? 6 : 8 }}>
             <div>
-              <div style={{ fontWeight: 700, color: "#1f2937", fontSize: isMobile ? 14 : 16 }}>ルート編集</div>
-              <div style={{ fontSize: isMobile ? 11 : 12, color: "#6b7280" }}>{editedRoute.length}ポイント</div>
+              <div style={{ fontWeight: 700, color: "#1f2937", fontSize: isMobile ? 13 : 15 }}>ルート作成</div>
+              <div style={{ fontSize: isMobile ? 10 : 11, color: "#6b7280" }}>{editedRoute.length}ポイント</div>
             </div>
             <button
-              onClick={() => setIsEditing((prev) => !prev)}
+              onClick={isEditing ? handleRegisterRoute : () => setIsEditing(true)}
+              disabled={isEditing && (editedRoute.length === 0 || saving)}
               style={{
-                padding: isMobile ? "8px 12px" : "10px 16px",
-                borderRadius: isMobile ? 10 : 12,
+                padding: isMobile ? "6px 10px" : "8px 14px",
+                borderRadius: isMobile ? 8 : 10,
                 border: "none",
-                fontSize: isMobile ? 12 : 14,
+                fontSize: isMobile ? 11 : 13,
                 fontWeight: 600,
-                backgroundColor: isEditing ? "#f97316" : "#2563eb",
+                backgroundColor: isEditing 
+                  ? (editedRoute.length === 0 || saving ? "#9ca3af" : "#f97316")
+                  : "#2563eb",
                 color: "white",
-                cursor: "pointer",
-                minWidth: isMobile ? 100 : 120,
+                cursor: (isEditing && (editedRoute.length === 0 || saving)) ? "not-allowed" : "pointer",
+                minWidth: isMobile ? 80 : 100,
+                opacity: (isEditing && (editedRoute.length === 0 || saving)) ? 0.6 : 1,
               }}
             >
-              {isEditing ? "終了" : "編集"}
+              {isEditing ? (saving ? "保存中..." : "登録") : "作成"}
             </button>
           </div>
           {hasEdits && (
-            <div style={{ marginTop: isMobile ? 6 : 8, fontSize: isMobile ? 11 : 12, color: "#dc2626", fontWeight: 600 }}>未保存の変更があります</div>
+            <div style={{ marginTop: isMobile ? 4 : 6, fontSize: isMobile ? 10 : 11, color: "#dc2626", fontWeight: 600 }}>未保存の変更があります</div>
           )}
           {isEditing && (
             <>
-              <p style={{ marginTop: isMobile ? 8 : 12, fontSize: isMobile ? 11 : 12, color: "#374151", lineHeight: 1.5 }}>
-                地図をタップするとポイントを追加できます。スマホでもピンチ操作でズームしながら編集できます。
+              <p style={{ marginTop: isMobile ? 6 : 8, fontSize: isMobile ? 10 : 11, color: "#374151", lineHeight: 1.4 }}>
+                地図上をタップするとポイントを追加できます。ポイントを繋げてルートを作成してください。
               </p>
-              <div style={{ display: "flex", flexWrap: "wrap", gap: isMobile ? 6 : 8, marginTop: isMobile ? 8 : 12 }}>
+              <div style={{ display: "flex", flexWrap: routeSource === "create" ? "nowrap" : "wrap", gap: isMobile ? 4 : 6, marginTop: isMobile ? 6 : 8 }}>
                 <button
                   onClick={handleUndoPoint}
                   style={{
                     flex: 1,
-                    minWidth: isMobile ? 80 : 120,
-                    padding: isMobile ? "8px 10px" : "10px 12px",
-                    borderRadius: isMobile ? 8 : 10,
+                    minWidth: isMobile ? 70 : 90,
+                    padding: isMobile ? "6px 8px" : "8px 10px",
+                    borderRadius: isMobile ? 6 : 8,
                     border: "1px solid #d1d5db",
                     backgroundColor: "white",
                     cursor: "pointer",
-                    fontSize: isMobile ? 12 : 14,
+                    fontSize: isMobile ? 11 : 12,
                   }}
                 >
-                  最後を削除
+                  最後のポイントを削除
                 </button>
                 <button
                   onClick={handleClearRoute}
                   style={{
                     flex: 1,
-                    minWidth: isMobile ? 80 : 120,
-                    padding: isMobile ? "8px 10px" : "10px 12px",
-                    borderRadius: isMobile ? 8 : 10,
+                    minWidth: isMobile ? 70 : 90,
+                    padding: isMobile ? "6px 8px" : "8px 10px",
+                    borderRadius: isMobile ? 6 : 8,
                     border: "1px solid #d1d5db",
                     backgroundColor: "white",
                     cursor: "pointer",
-                    fontSize: isMobile ? 12 : 14,
+                    fontSize: isMobile ? 11 : 12,
                   }}
                 >
                   すべて削除
                 </button>
-                <button
-                  onClick={handleResetRoute}
-                  style={{
-                    flex: 1,
-                    minWidth: isMobile ? 80 : 120,
-                    padding: isMobile ? "8px 10px" : "10px 12px",
-                    borderRadius: isMobile ? 8 : 10,
-                    border: "1px solid #d1d5db",
-                    backgroundColor: "white",
-                    cursor: "pointer",
-                    fontSize: isMobile ? 12 : 14,
-                  }}
-                >
-                  元に戻す
-                </button>
+                {routeSource !== "create" && (
+                  <button
+                    onClick={handleResetRoute}
+                    style={{
+                      flex: 1,
+                      minWidth: isMobile ? 70 : 90,
+                      padding: isMobile ? "6px 8px" : "8px 10px",
+                      borderRadius: isMobile ? 6 : 8,
+                      border: "1px solid #d1d5db",
+                      backgroundColor: "white",
+                      cursor: "pointer",
+                      fontSize: isMobile ? 11 : 12,
+                    }}
+                  >
+                    元に戻す
+                  </button>
+                )}
               </div>
               <input
                 type="text"
@@ -645,12 +713,12 @@ export default function RouteManagement() {
                 onChange={(e) => setCustomRouteName(e.target.value)}
                 placeholder="カスタムルート名（任意）"
                 style={{
-                  marginTop: isMobile ? 8 : 12,
+                  marginTop: isMobile ? 6 : 8,
                   width: "100%",
-                  padding: isMobile ? "10px 12px" : "12px 14px",
-                  borderRadius: isMobile ? 10 : 12,
+                  padding: isMobile ? "8px 10px" : "10px 12px",
+                  borderRadius: isMobile ? 8 : 10,
                   border: "1px solid #d1d5db",
-                  fontSize: isMobile ? 12 : 14,
+                  fontSize: isMobile ? 11 : 12,
                   boxSizing: "border-box",
                 }}
               />
