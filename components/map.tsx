@@ -155,17 +155,22 @@ export default function Map({ locations, plannedRoute, onMapReady, userLocation 
     
     // 円の半径
     const circleRadius = 20
-    // 円の中心（SVGの中心に配置）
-    const circleCenterX = 32
-    const circleCenterY = 32
+    // 三角形の長さ（ストローク幅も考慮）
+    const triangleLength = 14
+    const strokeWidth = 1.5
+    // 余白（三角形が切れないように十分な余白を確保）
+    const padding = triangleLength + strokeWidth + 2
+    
+    // 円の中心（余白を考慮して配置）
+    const circleCenterX = 32 + padding
+    const circleCenterY = 32 + padding
     
     // 進行方向に応じた円の接点の座標を計算
     const triangleX = circleCenterX + circleRadius * Math.cos(svgAngleRad)
     const triangleY = circleCenterY + circleRadius * Math.sin(svgAngleRad)
     
-    // 三角形が切れないようにSVGのサイズを拡大（三角形の長さ14 + 余白を考慮）
-    const svgSize = 80
-    const svgPadding = (svgSize - 64) / 2
+    // 三角形が切れないようにSVGのサイズを拡大（余白を両側に追加）
+    const svgSize = 64 + padding * 2
     
     const vehicleIcon = leafletRef.current.divIcon({
       className: "vehicle-marker",
