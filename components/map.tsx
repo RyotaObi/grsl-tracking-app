@@ -142,28 +142,65 @@ export default function Map({ locations, plannedRoute, onMapReady, userLocation 
       bearing = (bearing + 360) % 360 // 0-360度に正規化
     }
 
-    // 矢印型のアイコンを作成（SVGを使用）
+    // バスアイコンを作成（SVGを使用）
+    // 一意なIDを生成してシャドウフィルターの競合を避ける
+    const shadowId = `shadow-${Math.random().toString(36).substr(2, 9)}`
+    
+    // bearingをSVG座標系に変換（bearing: 0度=北、SVG: 0度=右）
+    // bearing 0度（北）→ SVG 270度（上）
+    // bearing 90度（東）→ SVG 0度（右）
+    // bearing 180度（南）→ SVG 90度（下）
+    // bearing 270度（西）→ SVG 180度（左）
+    const svgAngle = (90 - bearing) % 360
+    const svgAngleRad = (svgAngle * Math.PI) / 180
+    
+    // 円の半径
+    const circleRadius = 20
+    // 円の中心
+    const circleCenterX = 28
+    const circleCenterY = 32
+    
+    // 進行方向に応じた円の接点の座標を計算
+    const triangleX = circleCenterX + circleRadius * Math.cos(svgAngleRad)
+    const triangleY = circleCenterY + circleRadius * Math.sin(svgAngleRad)
+    
     const vehicleIcon = leafletRef.current.divIcon({
       className: "vehicle-marker",
       html: `
-        <svg width="24" height="24" viewBox="0 0 24 24" style="transform: rotate(${bearing}deg); transform-origin: center center;">
+        <svg width="64" height="64" viewBox="0 0 64 64" style="filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));">
           <defs>
-            <filter id="shadow" x="-50%" y="-50%" width="200%" height="200%">
+            <filter id="${shadowId}" x="-50%" y="-50%" width="200%" height="200%">
               <feDropShadow dx="0" dy="2" stdDeviation="2" flood-opacity="0.3"/>
             </filter>
           </defs>
-          <path
-            d="M 12 2 L 20 18 L 12 14 L 4 18 Z"
-            fill="#00C950"
-            stroke="white"
-            stroke-width="2"
-            filter="url(#shadow)"
-          />
-          <circle cx="12" cy="12" r="4" fill="white" stroke="#00C950" stroke-width="1.5"/>
+          <!-- 円形の緑色背景 -->
+          <circle cx="${circleCenterX}" cy="${circleCenterY}" r="${circleRadius}" fill="#00C950" stroke="white" stroke-width="1.5" filter="url(#${shadowId})"/>
+          <!-- 白いバスアイコン（シンプルなデザイン） -->
+          <g transform="translate(${circleCenterX}, ${circleCenterY})">
+            <!-- バスの本体（長方形） -->
+            <rect x="-9" y="-5" width="18" height="10" rx="1" fill="white"/>
+            <!-- バスの窓（2つの小さな長方形） -->
+            <rect x="-6" y="-3.5" width="3.5" height="2.5" rx="0.3" fill="#00C950"/>
+            <rect x="2.5" y="-3.5" width="3.5" height="2.5" rx="0.3" fill="#00C950"/>
+            <!-- バスの車輪（2つの小さな円） -->
+            <circle cx="-5.5" cy="6" r="2" fill="white"/>
+            <circle cx="5.5" cy="6" r="2" fill="white"/>
+          </g>
+          <!-- 三角形のポインター（進行方向に応じて円の周囲の適切な位置に配置） -->
+          <g transform="translate(${triangleX}, ${triangleY}) rotate(${svgAngle})">
+            <!-- 緑色の三角形（底辺が円の接線に沿う、鋭角が進行方向を指す） -->
+            <path
+              d="M -0.5 -8.5 L -0.5 8.5 L 14 -0.5 Z"
+              fill="#00C950"
+              stroke="white"
+              stroke-width="1.5"
+              filter="url(#${shadowId})"
+            />
+          </g>
         </svg>
       `,
-      iconSize: [24, 24],
-      iconAnchor: [12, 12], // 中心を位置に合わせる
+      iconSize: [64, 64],
+      iconAnchor: [28, 32], // 円の中心を位置に合わせる
     })
 
     if (vehicleMarkerRef.current) {
@@ -208,8 +245,8 @@ export default function Map({ locations, plannedRoute, onMapReady, userLocation 
         className: "user-marker",
         html: `
           <div style="
-            width: 18px;
-            height: 18px;
+            width: 25px;
+            height: 25px;
             background: #2B7FFF;
             border: 3px solid white;
             border-radius: 50%;
