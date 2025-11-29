@@ -15,7 +15,6 @@ export default function Map({ locations, plannedRoute, onMapReady, userLocation 
   const containerRef = useRef<HTMLDivElement>(null)
   const vehicleMarkerRef = useRef<any | null>(null)
   const routeLayerRef = useRef<any | null>(null)
-  const traveledRouteRef = useRef<any | null>(null)
   const leafletRef = useRef<any>(null)
   const userMarkerRef = useRef<any | null>(null)
 
@@ -156,18 +155,22 @@ export default function Map({ locations, plannedRoute, onMapReady, userLocation 
     
     // 円の半径
     const circleRadius = 20
-    // 円の中心
-    const circleCenterX = 28
+    // 円の中心（SVGの中心に配置）
+    const circleCenterX = 32
     const circleCenterY = 32
     
     // 進行方向に応じた円の接点の座標を計算
     const triangleX = circleCenterX + circleRadius * Math.cos(svgAngleRad)
     const triangleY = circleCenterY + circleRadius * Math.sin(svgAngleRad)
     
+    // 三角形が切れないようにSVGのサイズを拡大（三角形の長さ14 + 余白を考慮）
+    const svgSize = 80
+    const svgPadding = (svgSize - 64) / 2
+    
     const vehicleIcon = leafletRef.current.divIcon({
       className: "vehicle-marker",
       html: `
-        <svg width="64" height="64" viewBox="0 0 64 64" style="filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));">
+        <svg width="${svgSize}" height="${svgSize}" viewBox="0 0 ${svgSize} ${svgSize}" style="filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));">
           <defs>
             <filter id="${shadowId}" x="-50%" y="-50%" width="200%" height="200%">
               <feDropShadow dx="0" dy="2" stdDeviation="2" flood-opacity="0.3"/>
@@ -199,8 +202,8 @@ export default function Map({ locations, plannedRoute, onMapReady, userLocation 
           </g>
         </svg>
       `,
-      iconSize: [64, 64],
-      iconAnchor: [28, 32], // 円の中心を位置に合わせる
+      iconSize: [svgSize, svgSize],
+      iconAnchor: [circleCenterX, circleCenterY], // 円の中心を位置に合わせる
     })
 
     if (vehicleMarkerRef.current) {
@@ -213,23 +216,6 @@ export default function Map({ locations, plannedRoute, onMapReady, userLocation 
           icon: vehicleIcon,
         })
         .addTo(mapRef.current)
-    }
-
-    if (locations.length > 1) {
-      const traveledPath = locations.map((loc) => [loc.latitude, loc.longitude]) as [number, number][]
-
-      if (traveledRouteRef.current) {
-        traveledRouteRef.current.setLatLngs(traveledPath)
-      } else {
-        traveledRouteRef.current = leafletRef.current
-          .polyline(traveledPath, {
-            color: "#51A2FF",
-            weight: 3,
-            opacity: 0.6,
-            dashArray: "10, 10",
-          })
-          .addTo(mapRef.current)
-      }
     }
   }, [locations])
 
