@@ -158,4 +158,10 @@
   .leaflet-control {
     z-index: 0 !important;
   }
+
+  /* Make the base map a bit more subdued so overlays stand out */
+  .leaflet-tile {
+    /* 強制的に適用されるように !important を付与 */
+    filter: saturate(0.7) !important;
+  }
 }

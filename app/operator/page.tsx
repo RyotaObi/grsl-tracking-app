@@ -625,20 +625,89 @@ export default function OperatorHome() {
                           <MapPin size={16} style={{ display: "inline", marginRight: 8 }} />
                           スタート地点
                         </label>
-                        <input
-                          type="text"
-                          value={schedule.startLocation || ""}
-                          onChange={(e) => updateSchedule(selectedDate, index, { startLocation: e.target.value })}
-                          placeholder="例：ヤンマー前"
-                          style={{
-                            width: "100%",
-                            padding: "12px 16px",
-                            border: "1px solid #d1d5db",
-                            borderRadius: 8,
-                            fontSize: 16,
-                            boxSizing: "border-box",
-                          }}
-                        />
+                        {(() => {
+                          const rawValue = schedule.startLocation
+
+                          // セレクトボックスの表示値と、その他入力欄の値を決定
+                          let selectValue: "ヤンマー前" | "コア前" | "その他"
+                          let otherInputValue = ""
+
+                          if (rawValue === "ヤンマー前" || rawValue === "コア前") {
+                            // プリセット値そのまま
+                            selectValue = rawValue
+                          } else if (!rawValue) {
+                            // まだ何も設定されていない場合はデフォルトで「ヤンマー前」
+                            selectValue = "ヤンマー前"
+                          } else if (rawValue === "その他") {
+                            // 「その他」モードに入った直後（まだ自由記述なし）
+                            selectValue = "その他"
+                          } else {
+                            // 自由記述が入っている場合
+                            selectValue = "その他"
+                            otherInputValue = rawValue
+                          }
+
+                          const isOther = selectValue === "その他"
+
+                          return (
+                            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                              <select
+                                value={selectValue}
+                                onChange={(e) => {
+                                  const v = e.target.value as "ヤンマー前" | "コア前" | "その他"
+                                  if (v === "ヤンマー前" || v === "コア前") {
+                                    // プリセット値をそのまま保存
+                                    updateSchedule(selectedDate, index, { startLocation: v })
+                                  } else {
+                                    // 「その他」を選択したタイミングでは、
+                                    // すでに自由記述がある場合はそれを維持、なければ「その他」という印だけ残す
+                                    if (
+                                      !rawValue ||
+                                      rawValue === "ヤンマー前" ||
+                                      rawValue === "コア前" ||
+                                      rawValue === "その他"
+                                    ) {
+                                      updateSchedule(selectedDate, index, { startLocation: "その他" })
+                                    } else {
+                                      updateSchedule(selectedDate, index, { startLocation: rawValue })
+                                    }
+                                  }
+                                }}
+                                style={{
+                                  width: "100%",
+                                  padding: "10px 14px",
+                                  borderRadius: 8,
+                                  border: "1px solid #d1d5db",
+                                  fontSize: 16,
+                                  backgroundColor: "white",
+                                }}
+                              >
+                                <option value="ヤンマー前">ヤンマー前</option>
+                                <option value="コア前">コア前</option>
+                                <option value="その他">その他</option>
+                              </select>
+
+                              {isOther && (
+                                <input
+                                  type="text"
+                                  value={otherInputValue}
+                                  onChange={(e) =>
+                                    updateSchedule(selectedDate, index, { startLocation: e.target.value })
+                                  }
+                                  placeholder="その他のスタート地点を入力"
+                                  style={{
+                                    width: "100%",
+                                    padding: "12px 16px",
+                                    border: "1px solid #d1d5db",
+                                    borderRadius: 8,
+                                    fontSize: 16,
+                                    boxSizing: "border-box",
+                                  }}
+                                />
+                              )}
+                            </div>
+                          )
+                        })()}
                       </div>
                     </>
                   )}
