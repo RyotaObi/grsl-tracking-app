@@ -298,11 +298,13 @@ export default function Home() {
               textAlign: "center",
               padding: "32px",
               color: "#000",
+              // PC と同じサンセリフ系フォントスタックを明示的に指定
+              fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
             }}
           >
             <div style={{ fontSize: "20px", fontWeight: "500", lineHeight: "1.6" }}>次回の運行は</div>
             <div style={{ fontSize: "24px", fontWeight: "700", marginTop: "8px", lineHeight: "1.4" }}>
-              {nextOperation.date}({nextOperation.dayOfWeek})[{nextOperation.startTime}~{nextOperation.endTime}]
+              {nextOperation.date}({nextOperation.dayOfWeek}){nextOperation.startTime}~{nextOperation.endTime}
             </div>
             <div style={{ fontSize: "18px", fontWeight: "600", marginTop: "8px", color: "#1f2937" }}>
               {nextOperation.routeType}
