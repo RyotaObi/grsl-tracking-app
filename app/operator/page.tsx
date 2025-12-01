@@ -214,8 +214,18 @@ export default function OperatorHome() {
   const selectedDaySchedules = selectedDate ? getDaySchedules(selectedDate) : []
 
   return (
-    <div style={{ width: "100%", height: "100%", backgroundColor: "#f3f4f6", overflowY: "auto", padding: 16 }}>
-      <div style={{ maxWidth: 900, margin: "0 auto" }}>
+    <div
+      style={{
+        width: "100%",
+        height: "100%",
+        backgroundColor: "#f3f4f6",
+        overflowY: "auto",
+        overflowX: "hidden",
+        padding: 16,
+        boxSizing: "border-box",
+      }}
+    >
+      <div style={{ maxWidth: 900, margin: "0 auto", width: "100%", boxSizing: "border-box" }}>
         <div
           style={{
             backgroundColor: "white",

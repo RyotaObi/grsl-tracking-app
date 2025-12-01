@@ -302,14 +302,14 @@ export default function Home() {
               fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
             }}
           >
-            <div style={{ fontSize: "20px", fontWeight: "500", lineHeight: "1.6" }}>次回の運行は</div>
-            <div style={{ fontSize: "24px", fontWeight: "700", marginTop: "8px", lineHeight: "1.4" }}>
+            <div style={{ fontSize: "25px", fontWeight: "500", lineHeight: "1.6" }}>次回の運行は</div>
+            <div style={{ fontSize: "29px", fontWeight: "700", marginTop: "8px", lineHeight: "1.4" }}>
               {nextOperation.date}({nextOperation.dayOfWeek}){nextOperation.startTime}~{nextOperation.endTime}
             </div>
-            <div style={{ fontSize: "18px", fontWeight: "600", marginTop: "8px", color: "#1f2937" }}>
+            <div style={{ fontSize: "23px", fontWeight: "600", marginTop: "8px", color: "#1f2937" }}>
               {nextOperation.routeType}
             </div>
-            <div style={{ fontSize: "18px", marginTop: "16px", color: "#000" }}>
+            <div style={{ fontSize: "23px", marginTop: "16px", color: "#000" }}>
               スタート地点は{nextOperation.startLocation}です
             </div>
           </div>
