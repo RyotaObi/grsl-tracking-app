@@ -267,6 +267,10 @@ export default function OperatorHome() {
             padding: "16px",
             marginBottom: 16,
             boxShadow: "0 1px 3px 0 rgba(0, 0, 0, 0.1)",
+            width: "100%",
+            maxWidth: "100%",
+            boxSizing: "border-box",
+            overflowX: "hidden",
           }}
         >
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
@@ -305,7 +309,19 @@ export default function OperatorHome() {
             </button>
           </div>
 
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 4, marginBottom: 4 }}>
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(7, minmax(0, 1fr))",
+              gap: 4,
+              marginBottom: 4,
+              width: "100%",
+              maxWidth: "calc(100% - 16px)",
+              marginLeft: "auto",
+              marginRight: "auto",
+              boxSizing: "border-box",
+            }}
+          >
             {["日", "月", "火", "水", "木", "金", "土"].map((day, index) => (
               <div
                 key={day}
@@ -322,7 +338,18 @@ export default function OperatorHome() {
             ))}
           </div>
 
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 4 }}>
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(7, minmax(0, 1fr))",
+              gap: 4,
+              width: "100%",
+              maxWidth: "calc(100% - 16px)",
+              marginLeft: "auto",
+              marginRight: "auto",
+              boxSizing: "border-box",
+            }}
+          >
             {Array.from({ length: firstDayOfWeek }).map((_, index) => (
               <div key={`empty-${index}`} />
             ))}
@@ -347,12 +374,21 @@ export default function OperatorHome() {
                     flexDirection: "column",
                     alignItems: "center",
                     justifyContent: "center",
-                    padding: 4,
+                    padding: 2,
                     position: "relative",
                     transition: "all 0.2s",
                   }}
                 >
-                  <div style={{ fontSize: 25, fontWeight: 600, color: isOperating ? "#1e40af" : "#1f2937" }}>{day}</div>
+                  <div
+                    style={{
+                      fontSize: 20,
+                      fontWeight: 600,
+                      lineHeight: 1.1,
+                      color: isOperating ? "#1e40af" : "#1f2937",
+                    }}
+                  >
+                    {day}
+                  </div>
                   {scheduleCount > 1 && (
                     <div
                       style={{
@@ -396,17 +432,17 @@ export default function OperatorHome() {
                 <button
                   onClick={() => addNewSchedule(selectedDate)}
                   style={{
-                    padding: "8px 16px",
+                    padding: "6px 12px",
                     backgroundColor: "#3b82f6",
                     color: "white",
                     border: "none",
-                    borderRadius: 8,
-                    fontSize: 14,
+                    borderRadius: 6,
+                    fontSize: 13,
                     fontWeight: 600,
                     cursor: "pointer",
                     display: "flex",
                     alignItems: "center",
-                    gap: 6,
+                    gap: 4,
                   }}
                 >
                   <span>+</span>

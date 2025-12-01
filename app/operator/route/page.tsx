@@ -527,11 +527,11 @@ export default function RouteManagement() {
         {routeSource === "saved" && (
         <div
           style={{
-            width: "60%",
+            width: isMobile ? "92%" : "70%",
             maxWidth: 720,
             backgroundColor: "rgba(255, 255, 255, 0.95)",
-            borderRadius: 16,
-            padding: "16px 24px",
+            borderRadius: 14,
+            padding: isMobile ? "10px 16px" : "12px 20px",
             boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)",
           }}
         >
@@ -606,7 +606,8 @@ export default function RouteManagement() {
         <div
           style={{
             position: "fixed",
-            bottom: isMobile ? 120 : 180,
+            // できるだけ下に配置しつつ、下部の「キャンセル」「設定」ボタンとかぶらないように少しだけ余白を確保
+            bottom: isMobile ? 80 : 160,
             left: isMobile ? 8 : 16,
             right: isMobile ? 8 : 16,
             zIndex: 1000,
@@ -742,6 +743,8 @@ export default function RouteManagement() {
           maxWidth: isMobile ? "none" : 600,
           padding: 0,
           boxSizing: "border-box",
+          justifyContent: "center",
+          alignItems: "center",
         }}
       >
         {selectMode ? (
