@@ -52,7 +52,7 @@ export default function Map({ locations, plannedRoute, onMapReady, userLocation 
       doubleClickZoom: true,
       boxZoom: true,
       tap: true,
-    }).setView([35.6393079, 140.0465158], 15)
+    }).setView([35.6428991, 140.0467733], 15)
 
     L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
       attribution: "© OpenStreetMap contributors",
