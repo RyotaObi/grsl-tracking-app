@@ -4,6 +4,7 @@ export interface LocationData {
   timestamp: string | Date
   speed?: number
   accuracy?: number
+  heading?: number
   id?: string
 }
 

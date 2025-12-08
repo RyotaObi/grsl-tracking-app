@@ -50,6 +50,7 @@ export function getRealtimeLocations(
           timestamp: data.timestamp instanceof Timestamp ? data.timestamp.toDate() : new Date(data.timestamp),
           speed: data.speed,
           accuracy: data.accuracy,
+          heading: data.heading,
         })
       })
       callback(locations)
@@ -151,6 +152,7 @@ export async function getAllLocationsFromCollection(collectionName: string): Pro
         timestamp: data.timestamp instanceof Timestamp ? data.timestamp.toDate() : new Date(data.timestamp),
         speed: data.speed,
         accuracy: data.accuracy,
+        heading: data.heading,
       })
     })
 

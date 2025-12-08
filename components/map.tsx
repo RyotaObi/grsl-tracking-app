@@ -126,9 +126,14 @@ export default function Map({ locations, plannedRoute, onMapReady, userLocation 
 
     const latestLocation = locations[locations.length - 1]
 
-    // 進行方向を計算（最新の位置とその前の位置から角度を計算）
-    let bearing = 0
-    if (locations.length > 1) {
+    // 進行方向を取得（headingが利用可能な場合はそれを使用、なければ2点間から計算）
+    let bearing: number | null = null
+    
+    // Firestoreから取得したheadingを使用（0以外の場合）
+    if (latestLocation.heading !== undefined && latestLocation.heading !== null && latestLocation.heading !== 0) {
+      bearing = latestLocation.heading
+    } else if (locations.length > 1) {
+      // headingが利用できない場合は、最新の位置とその前の位置から角度を計算
       const prevLocation = locations[locations.length - 2]
       const lat1 = (prevLocation.latitude * Math.PI) / 180
       const lat2 = (latestLocation.latitude * Math.PI) / 180
@@ -145,12 +150,15 @@ export default function Map({ locations, plannedRoute, onMapReady, userLocation 
     // 一意なIDを生成してシャドウフィルターの競合を避ける
     const shadowId = `shadow-${Math.random().toString(36).substr(2, 9)}`
     
+    // 進行方向の表示有無を判定（bearingがnullまたは0の場合は非表示）
+    const showDirection = bearing !== null && bearing !== 0
+    
     // bearingをSVG座標系に変換（bearing: 0度=北、SVG: 0度=右）
     // bearing 0度（北）→ SVG 270度（上）
     // bearing 90度（東）→ SVG 0度（右）
     // bearing 180度（南）→ SVG 90度（下）
     // bearing 270度（西）→ SVG 180度（左）
-    const svgAngle = (90 - bearing) % 360
+    const svgAngle = bearing !== null ? (90 - bearing) % 360 : 0
     const svgAngleRad = (svgAngle * Math.PI) / 180
     
     // 円の半径
@@ -158,8 +166,8 @@ export default function Map({ locations, plannedRoute, onMapReady, userLocation 
     // 三角形の長さ（ストローク幅も考慮）
     const triangleLength = 14
     const strokeWidth = 1.5
-    // 余白（三角形が切れないように十分な余白を確保）
-    const padding = triangleLength + strokeWidth + 2
+    // 余白（三角形が切れないように十分な余白を確保、表示しない場合は最小限）
+    const padding = showDirection ? triangleLength + strokeWidth + 2 : 0
     
     // 円の中心（余白を考慮して配置）
     const circleCenterX = 32 + padding
@@ -194,7 +202,7 @@ export default function Map({ locations, plannedRoute, onMapReady, userLocation 
             <circle cx="-5.5" cy="6" r="2" fill="white"/>
             <circle cx="5.5" cy="6" r="2" fill="white"/>
           </g>
-          <!-- 三角形のポインター（進行方向に応じて円の周囲の適切な位置に配置） -->
+          ${showDirection ? `<!-- 三角形のポインター（進行方向に応じて円の周囲の適切な位置に配置） -->
           <g transform="translate(${triangleX}, ${triangleY}) rotate(${svgAngle})">
             <!-- 緑色の三角形（底辺が円の接線に沿う、鋭角が進行方向を指す） -->
             <path
@@ -204,7 +212,7 @@ export default function Map({ locations, plannedRoute, onMapReady, userLocation 
               stroke-width="1.5"
               filter="url(#${shadowId})"
             />
-          </g>
+          </g>` : ''}
         </svg>
       `,
       iconSize: [svgSize, svgSize],
