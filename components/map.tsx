@@ -17,6 +17,7 @@ export default function Map({ locations, plannedRoute, onMapReady, userLocation 
   const routeLayerRef = useRef<any | null>(null)
   const leafletRef = useRef<any>(null)
   const userMarkerRef = useRef<any | null>(null)
+  const lastValidHeadingRef = useRef<number>(0) // 最後の有効なheadingの値を保持（初期値は0）
 
   useEffect(() => {
     const loadLeaflet = async () => {
@@ -126,25 +127,24 @@ export default function Map({ locations, plannedRoute, onMapReady, userLocation 
 
     const latestLocation = locations[locations.length - 1]
 
-    // 進行方向を取得（headingが利用可能な場合はそれを使用、なければ2点間から計算）
+    // 進行方向を取得（headingが利用可能な場合のみ使用）
     let bearing: number | null = null
     
-    // Firestoreから取得したheadingを使用（0以外の場合）
-    if (latestLocation.heading !== undefined && latestLocation.heading !== null && latestLocation.heading !== 0) {
-      bearing = latestLocation.heading
-    } else if (locations.length > 1) {
-      // headingが利用できない場合は、最新の位置とその前の位置から角度を計算
-      const prevLocation = locations[locations.length - 2]
-      const lat1 = (prevLocation.latitude * Math.PI) / 180
-      const lat2 = (latestLocation.latitude * Math.PI) / 180
-      const dLon = ((latestLocation.longitude - prevLocation.longitude) * Math.PI) / 180
-
-      const y = Math.sin(dLon) * Math.cos(lat2)
-      const x = Math.cos(lat1) * Math.sin(lat2) - Math.sin(lat1) * Math.cos(lat2) * Math.cos(dLon)
-
-      bearing = (Math.atan2(y, x) * 180) / Math.PI
-      bearing = (bearing + 360) % 360 // 0-360度に正規化
+    // Firestoreから取得したheadingの値を確認
+    if (latestLocation.heading !== undefined && latestLocation.heading !== null) {
+      // headingが0以外の場合、変数の値を更新
+      if (latestLocation.heading !== 0) {
+        lastValidHeadingRef.current = latestLocation.heading
+        bearing = latestLocation.heading
+      } else {
+        // headingが0の場合、保存されている変数の値を使用
+        if (lastValidHeadingRef.current !== 0) {
+          bearing = lastValidHeadingRef.current
+        }
+        // lastValidHeadingRef.currentも0の場合は、bearingはnullのまま（進行方向を非表示）
+      }
     }
+    // headingがundefined/nullの場合は、bearingはnullのまま（進行方向を非表示）
 
     // バスアイコンを作成（SVGを使用）
     // 一意なIDを生成してシャドウフィルターの競合を避ける
