@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useRef } from "react"
+import { useEffect, useRef, useMemo } from "react"
 import type { LocationData } from "@/lib/types"
 
 interface MapProps {
@@ -122,6 +122,11 @@ export default function Map({ locations, plannedRoute, onMapReady, userLocation 
     }
   }, [plannedRoute])
 
+  // 最新のlocationのheadingを取得（依存配列で使用するため）
+  const latestHeading = useMemo(() => {
+    return locations.length > 0 ? locations[locations.length - 1]?.heading : null
+  }, [locations])
+
   useEffect(() => {
     if (!mapRef.current || locations.length === 0 || !leafletRef.current) return
 
@@ -136,15 +141,19 @@ export default function Map({ locations, plannedRoute, onMapReady, userLocation 
       if (latestLocation.heading !== 0) {
         lastValidHeadingRef.current = latestLocation.heading
         bearing = latestLocation.heading
+        console.log("[Map] Heading updated:", latestLocation.heading, "Bearing:", bearing)
       } else {
         // headingが0の場合、保存されている変数の値を使用
         if (lastValidHeadingRef.current !== 0) {
           bearing = lastValidHeadingRef.current
+          console.log("[Map] Heading is 0, using saved value:", lastValidHeadingRef.current)
         }
         // lastValidHeadingRef.currentも0の場合は、bearingはnullのまま（進行方向を非表示）
       }
     }
     // headingがundefined/nullの場合は、bearingはnullのまま（進行方向を非表示）
+    
+    console.log("[Map] Latest location heading:", latestLocation.heading, "Final bearing:", bearing)
 
     // バスアイコンを作成（SVGを使用）
     // 一意なIDを生成してシャドウフィルターの競合を避ける
@@ -230,7 +239,7 @@ export default function Map({ locations, plannedRoute, onMapReady, userLocation 
         })
         .addTo(mapRef.current)
     }
-  }, [locations])
+  }, [locations, latestHeading])
 
   useEffect(() => {
     if (!mapRef.current || !userLocation || !leafletRef.current) {
