@@ -127,6 +127,38 @@ export default function Map({ locations, plannedRoute, onMapReady, userLocation 
 
     const latestLocation = locations[locations.length - 1]
 
+    // 2点間の方位角（bearing）を計算する関数
+    const calculateBearing = (lat1: number, lon1: number, lat2: number, lon2: number): number => {
+      const dLon = ((lon2 - lon1) * Math.PI) / 180
+      const lat1Rad = (lat1 * Math.PI) / 180
+      const lat2Rad = (lat2 * Math.PI) / 180
+
+      const y = Math.sin(dLon) * Math.cos(lat2Rad)
+      const x =
+        Math.cos(lat1Rad) * Math.sin(lat2Rad) -
+        Math.sin(lat1Rad) * Math.cos(lat2Rad) * Math.cos(dLon)
+
+      let bearing = (Math.atan2(y, x) * 180) / Math.PI
+      bearing = (bearing + 360) % 360 // 0-360度に正規化
+
+      return bearing
+    }
+
+    // 2点間の距離を計算する関数（メートル単位）
+    const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number): number => {
+      const R = 6371000 // 地球の半径（メートル）
+      const dLat = ((lat2 - lat1) * Math.PI) / 180
+      const dLon = ((lon2 - lon1) * Math.PI) / 180
+      const a =
+        Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+        Math.cos((lat1 * Math.PI) / 180) *
+          Math.cos((lat2 * Math.PI) / 180) *
+          Math.sin(dLon / 2) *
+          Math.sin(dLon / 2)
+      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
+      return R * c
+    }
+
     // headingの値を10度刻みに丸める関数（360度を36分割）
     const roundHeadingTo10Degrees = (heading: number): number => {
       // 0度付近の特別処理（355以上360以下 or 0以上5未満 → 0度）
@@ -138,32 +170,91 @@ export default function Map({ locations, plannedRoute, onMapReady, userLocation 
       return Math.round(heading / 10) * 10
     }
 
-    // 進行方向を取得（headingが利用可能な場合のみ使用）
+    // 進行方向を計算
     let bearing: number | null = null
-    
-    // Firestoreから取得したheadingの値を確認
-    if (latestLocation.heading !== undefined && latestLocation.heading !== null) {
-      const speed = latestLocation.speed ?? 0
-      
-      // speed = 0の場合は、headingの値に関係なくlastValidHeadingRef.currentを更新せず、保存されている値を使用
-      if (speed <= 1) {
-        bearing = lastValidHeadingRef.current
-      } else {
-        // speed > 0の場合のみ、headingの値に基づいて処理
-        // headingが0の場合、speedを確認して判定
-        if (latestLocation.heading === 0) {
-          // speed > 0 かつ heading = 0 → 北方向に進んでいる（0度として表示）
-          // 取得した値が0の場合はlastValidHeadingRef.currentを更新しない
-          bearing = 0
-        } else {
-          // headingが0以外の場合、変数の値を更新（10度刻みに丸める）
-          const roundedHeading = roundHeadingTo10Degrees(latestLocation.heading)
+    const speed = latestLocation.speed ?? 0
+
+    // 速度が低い場合は、前回の有効なheadingを保持
+    if (speed <= 1) {
+      bearing = lastValidHeadingRef.current !== 0 ? lastValidHeadingRef.current : null
+    } else {
+      // 過去の位置情報から進行方向を計算
+      // 複数のheadingを計算して加重平均を取ることで、右折・左折直後も正確に反映
+      const minPoints = 2
+      const maxPoints = 4 // 最新4点を使用（約20秒間のデータ）
+      const availablePoints = Math.min(locations.length, maxPoints)
+
+      if (availablePoints >= minPoints) {
+        const bearings: { bearing: number; weight: number }[] = []
+
+        // 最新の点から順に、複数のheadingを計算
+        // 例: 4点ある場合
+        // - 点3と点4（最新2点、重み4）
+        // - 点2と点4（2点前と最新、重み2）
+        // - 点1と点4（3点前と最新、重み1）
+        for (let i = availablePoints - 1; i >= 1; i--) {
+          const startIndex = locations.length - availablePoints + (availablePoints - 1 - i)
+          const endIndex = locations.length - 1
+
+          if (startIndex >= 0 && endIndex > startIndex) {
+            const startLocation = locations[startIndex]
+            const endLocation = locations[endIndex]
+
+            // 2点間の距離を計算
+            const distance = calculateDistance(
+              startLocation.latitude,
+              startLocation.longitude,
+              endLocation.latitude,
+              endLocation.longitude,
+            )
+
+            // 距離が3メートル以上の場合は有効なheadingとして使用
+            // より新しい点ほど重みを大きく（最新2点は重み4、その次は重み2、さらに古い点は重み1）
+            if (distance >= 3) {
+              const calculatedBearing = calculateBearing(
+                startLocation.latitude,
+                startLocation.longitude,
+                endLocation.latitude,
+                endLocation.longitude,
+              )
+
+              // 重み: 最新の2点間は4、その次は2、さらに古い点は1
+              const weight = i === availablePoints - 1 ? 4 : i === availablePoints - 2 ? 2 : 1
+              bearings.push({ bearing: calculatedBearing, weight })
+            }
+          }
+        }
+
+        // 加重平均を計算（角度の循環性を考慮）
+        if (bearings.length > 0) {
+          let sinSum = 0
+          let cosSum = 0
+          let totalWeight = 0
+
+          for (const { bearing, weight } of bearings) {
+            const rad = (bearing * Math.PI) / 180
+            sinSum += Math.sin(rad) * weight
+            cosSum += Math.cos(rad) * weight
+            totalWeight += weight
+          }
+
+          // 加重平均の角度を計算
+          const avgBearing = (Math.atan2(sinSum / totalWeight, cosSum / totalWeight) * 180) / Math.PI
+          const normalizedBearing = (avgBearing + 360) % 360
+
+          // 計算したheadingを10度刻みに丸める
+          const roundedHeading = roundHeadingTo10Degrees(normalizedBearing)
           lastValidHeadingRef.current = roundedHeading
           bearing = roundedHeading
+        } else {
+          // 有効なheadingが計算できなかった場合は、前回の有効なheadingを保持
+          bearing = lastValidHeadingRef.current !== 0 ? lastValidHeadingRef.current : null
         }
+      } else {
+        // 位置情報が2点未満（1点のみ）の場合は、進行方向を非表示
+        bearing = null
       }
     }
-    // headingがundefined/nullの場合は、bearingはnullのまま（進行方向を非表示）
 
     // バスアイコンを作成（SVGを使用）
     // 一意なIDを生成してシャドウフィルターの競合を避ける
