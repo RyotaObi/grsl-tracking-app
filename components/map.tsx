@@ -127,21 +127,40 @@ export default function Map({ locations, plannedRoute, onMapReady, userLocation 
 
     const latestLocation = locations[locations.length - 1]
 
+    // headingの値を10度刻みに丸める関数（360度を36分割）
+    const roundHeadingTo10Degrees = (heading: number): number => {
+      // 0度付近の特別処理（355以上360以下 or 0以上5未満 → 0度）
+      if ((heading >= 355 && heading <= 360) || (heading >= 0 && heading < 5)) {
+        return 0
+      }
+      // その他の範囲を10度刻みに丸める
+      // 5以上15未満 → 10度、15以上25未満 → 20度、25以上35未満 → 30度、35以上45未満 → 40度...
+      return Math.round(heading / 10) * 10
+    }
+
     // 進行方向を取得（headingが利用可能な場合のみ使用）
     let bearing: number | null = null
     
     // Firestoreから取得したheadingの値を確認
     if (latestLocation.heading !== undefined && latestLocation.heading !== null) {
-      // headingが0以外の場合、変数の値を更新
-      if (latestLocation.heading !== 0) {
-        lastValidHeadingRef.current = latestLocation.heading
-        bearing = latestLocation.heading
+      const speed = latestLocation.speed ?? 0
+      
+      // speed = 0の場合は、headingの値に関係なくlastValidHeadingRef.currentを更新せず、保存されている値を使用
+      if (speed <= 1) {
+        bearing = lastValidHeadingRef.current
       } else {
-        // headingが0の場合、保存されている変数の値を使用
-        if (lastValidHeadingRef.current !== 0) {
-          bearing = lastValidHeadingRef.current
+        // speed > 0の場合のみ、headingの値に基づいて処理
+        // headingが0の場合、speedを確認して判定
+        if (latestLocation.heading === 0) {
+          // speed > 0 かつ heading = 0 → 北方向に進んでいる（0度として表示）
+          // 取得した値が0の場合はlastValidHeadingRef.currentを更新しない
+          bearing = 0
+        } else {
+          // headingが0以外の場合、変数の値を更新（10度刻みに丸める）
+          const roundedHeading = roundHeadingTo10Degrees(latestLocation.heading)
+          lastValidHeadingRef.current = roundedHeading
+          bearing = roundedHeading
         }
-        // lastValidHeadingRef.currentも0の場合は、bearingはnullのまま（進行方向を非表示）
       }
     }
     // headingがundefined/nullの場合は、bearingはnullのまま（進行方向を非表示）
