@@ -5,7 +5,7 @@ import { MapWrapper } from "@/components/map-wrapper"
 import { ZoomControls } from "@/components/zoom-controls"
 import { PassengerCount } from "@/components/passenger-count"
 import { RouteInfo } from "@/components/route-info"
-import { getRealtimeLocations, getSavedRoute, getCurrentScheduleStatus } from "@/lib/firebase"
+import { getRealtimeLocations, getSavedRoute, getCurrentScheduleStatus, getDateCollections, getAllLocationsFromCollection } from "@/lib/firebase"
 import type { LocationData, DaySchedule } from "@/lib/types"
 import type { Map as LeafletMap } from "leaflet"
 
@@ -26,37 +26,106 @@ export default function Home() {
     routeType: "循環ルート" | "フリー運行"
   } | null>(null)
 
-  // 今日の日付からコレクション名を生成
+  // 今日の日付から最新のコレクション名を自動選択
   useEffect(() => {
-    const today = new Date()
-    const year = today.getFullYear()
-    const month = String(today.getMonth() + 1).padStart(2, "0")
-    const day = String(today.getDate()).padStart(2, "0")
-    const todayCollection = `${year}${month}${day}`
-    setCollectionName(todayCollection)
+    const selectLatestCollection = async () => {
+      const today = new Date()
+      const year = today.getFullYear()
+      const month = String(today.getMonth() + 1).padStart(2, "0")
+      const day = String(today.getDate()).padStart(2, "0")
+      const todayDatePrefix = `${year}${month}${day}`
+      
+      try {
+        // 利用可能なコレクションのリストを取得
+        const availableCollections = await getDateCollections()
+        
+        // 今日の日付で始まるコレクションをフィルタリング
+        const todayCollections = availableCollections.filter((name) => name.startsWith(todayDatePrefix))
+        
+        if (todayCollections.length > 0) {
+          // 最新のコレクションを選択
+          // コレクション名が "YYYYMMDD" または "YYYYMMDD_N" の形式の場合、
+          // "_" の後の数字が大きいものを最新とする
+          const sortedCollections = [...todayCollections].sort((a, b) => {
+            // "_" で分割して比較
+            const partsA = a.split("_")
+            const partsB = b.split("_")
+            
+            // 数字部分を取得（存在しない場合は0とする）
+            const numA = partsA.length > 1 ? parseInt(partsA[1], 10) || 0 : 0
+            const numB = partsB.length > 1 ? parseInt(partsB[1], 10) || 0 : 0
+            
+            // 数字が大きいものを最新とする
+            return numB - numA
+          })
+          
+          const latestCollection = sortedCollections[0]
+          setCollectionName(latestCollection)
+        } else {
+          // date-indexに登録されていない場合、最大10個まで試行
+          // 20251212, 20251212_2, 20251212_3... の順に試して、データが存在する最初のコレクションを使用
+          let foundCollection: string | null = null
+          
+          // まず基本のコレクション名を試す
+          const baseCollection = todayDatePrefix
+          try {
+            const testLocations = await getAllLocationsFromCollection(baseCollection)
+            if (testLocations.length > 0) {
+              foundCollection = baseCollection
+            }
+          } catch (error) {
+            // コレクションが存在しない場合は次のを試す
+          }
+          
+          // データが見つからない場合、_2, _3... を順に試す
+          // 最新のコレクションを選択するため、大きい番号から試す
+          if (!foundCollection) {
+            for (let i = 10; i >= 2; i--) {
+              const testCollection = `${todayDatePrefix}_${i}`
+              try {
+                const testLocations = await getAllLocationsFromCollection(testCollection)
+                if (testLocations.length > 0) {
+                  foundCollection = testCollection
+                  break
+                }
+              } catch (error) {
+                // コレクションが存在しない場合は次のを試す
+                continue
+              }
+            }
+          }
+          
+          if (foundCollection) {
+            setCollectionName(foundCollection)
+          } else {
+            // どのコレクションにもデータがない場合、基本のコレクション名を使用
+            setCollectionName(todayDatePrefix)
+          }
+        }
+      } catch (error) {
+        // エラー時は、今日の日付のコレクション名を使用（フォールバック）
+        setCollectionName(todayDatePrefix)
+      }
+    }
+    
+    selectLatestCollection()
   }, [])
 
   // Firestoreからリアルタイムでデータを取得
   useEffect(() => {
     if (!collectionName) return
 
-    console.log("[v0] Subscribing to collection:", collectionName)
-
     const unsubscribe = getRealtimeLocations(collectionName, (newLocations) => {
-      console.log("[v0] Received locations:", newLocations.length)
       setLocations(newLocations)
     })
 
     return () => {
-      console.log("[v0] Unsubscribing from collection")
       unsubscribe()
     }
   }, [collectionName])
 
   useEffect(() => {
     if ("geolocation" in navigator) {
-      console.log("[v0] Starting continuous location tracking...")
-
       const watchId = navigator.geolocation.watchPosition(
         (position) => {
           const location = {
@@ -64,17 +133,9 @@ export default function Home() {
             lng: position.coords.longitude,
           }
           setUserLocation(location)
-          console.log("[v0] User location updated:", location)
         },
         (error) => {
-          console.error("[v0] Geolocation error:", error.code, error.message)
-          if (error.code === 1) {
-            console.error("[v0] Location permission denied by user")
-          } else if (error.code === 2) {
-            console.error("[v0] Location unavailable")
-          } else if (error.code === 3) {
-            console.error("[v0] Location request timeout")
-          }
+          // エラーは無視（位置情報が取得できない場合でもアプリは動作する）
         },
         {
           enableHighAccuracy: true,
@@ -84,11 +145,8 @@ export default function Home() {
       )
 
       return () => {
-        console.log("[v0] Stopping location tracking")
         navigator.geolocation.clearWatch(watchId)
       }
-    } else {
-      console.error("[v0] Geolocation not supported by browser")
     }
   }, [])
 
@@ -124,15 +182,14 @@ export default function Home() {
           endDate.setDate(endDate.getDate() + 1)
         }
 
-        const timeUntilEnd = endDate.getTime() - currentTime
-        if (timeUntilEnd > 0) {
-          endTimer = setTimeout(async () => {
-            setIsOperating(false)
-            // 終了後に次の運行を取得
-            await setupTimers()
-          }, timeUntilEnd)
-          console.log(`[v0] 運行終了タイマーを設定: ${endDate.toLocaleString()}`)
-        }
+          const timeUntilEnd = endDate.getTime() - currentTime
+          if (timeUntilEnd > 0) {
+            endTimer = setTimeout(async () => {
+              setIsOperating(false)
+              // 終了後に次の運行を取得
+              await setupTimers()
+            }, timeUntilEnd)
+          }
       } else if (status.nextOperation) {
         // 現在運行時間外の場合：次の運行開始時刻にタイマーを設定
         // nextOperation.dateは "12/2(火)" のような形式なので、日付部分を抽出
@@ -170,7 +227,6 @@ export default function Home() {
               // 開始時にスケジュールを再読み込み
               await setupTimers()
             }, timeUntilStart)
-            console.log(`[v0] 運行開始タイマーを設定: ${startDate.toLocaleString()}`)
           }
         }
       }
@@ -193,34 +249,28 @@ export default function Home() {
   useEffect(() => {
     const loadActiveRoute = async () => {
       if (!isOperating || !currentSchedule || currentSchedule.routeType !== "循環ルート") {
-        console.log("[v0] Not loading route - not operating or not circular route")
         setPlannedRoute([])
         return
       }
 
-      console.log("[v0] Loading active route...")
       const routeId = currentSchedule.routeId
 
       if (routeId) {
-        console.log("[v0] Active route ID:", routeId)
         const savedRoute = await getSavedRoute(routeId)
 
         if (savedRoute) {
-          console.log("[v0] Loaded saved route:", savedRoute.name, "with", savedRoute.points.length, "points")
           const routeCoords: [number, number][] = savedRoute.points.map((p) => [p.lat, p.lng])
           setPlannedRoute(routeCoords)
         } else {
-          console.log("[v0] No saved route data found for ID:", routeId)
           setPlannedRoute([])
         }
       } else {
-        console.log("[v0] No route ID set for circular route")
         setPlannedRoute([])
       }
     }
 
     loadActiveRoute()
-  }, [isOperating, currentSchedule]) // Updated dependency to include currentSchedule
+  }, [isOperating, currentSchedule])
 
   // ユーザーの現在位置を中心に
   const handleUserLocation = useCallback(() => {
@@ -260,12 +310,10 @@ export default function Home() {
   // 車両の現在位置を中心に
   const handleVehicleLocation = useCallback(() => {
     if (!map || locations.length === 0) {
-      console.log("[v0] Vehicle location not available")
       return
     }
 
     const latestLocation = locations[locations.length - 1]
-    console.log("[v0] Centering on vehicle:", latestLocation)
     map.setView([latestLocation.latitude, latestLocation.longitude], 16)
   }, [map, locations])
 
