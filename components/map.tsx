@@ -278,7 +278,8 @@ export default function Map({ locations, plannedRoute, onMapReady, userLocation 
     // bearing 90度（東）→ SVG 0度（右）
     // bearing 180度（南）→ SVG 90度（下）
     // bearing 270度（西）→ SVG 180度（左）
-    const svgAngle = bearing !== null ? (90 - bearing) % 360 : 0
+    // ※ (bearing - 90) でSVGの0度（右）基準に揃える
+    const svgAngle = bearing !== null ? (bearing - 90 + 360) % 360 : 0
     const svgAngleRad = (svgAngle * Math.PI) / 180
     
     // 円の半径
