@@ -179,7 +179,7 @@ export default function Map({ locations, plannedRoute, onMapReady, userLocation 
       bearing = lastValidHeadingRef.current !== 0 ? lastValidHeadingRef.current : null
     } else {
       // 過去の位置情報から進行方向を計算
-      // 複数のheadingを計算して加重平均を取ることで、右折・左折直後も正確に反映
+      // 連続する点同士を結んでheadingを計算し、加重平均を取ることで、カーブ走行時も正確に反映
       const minPoints = 2
       const maxPoints = 4 // 最新4点を使用（約20秒間のデータ）
       const availablePoints = Math.min(locations.length, maxPoints)
@@ -187,16 +187,25 @@ export default function Map({ locations, plannedRoute, onMapReady, userLocation 
       if (availablePoints >= minPoints) {
         const bearings: { bearing: number; weight: number }[] = []
 
-        // 最新の点から順に、複数のheadingを計算
-        // 例: 4点ある場合
-        // - 点3と点4（最新2点、重み4）
-        // - 点2と点4（2点前と最新、重み2）
-        // - 点1と点4（3点前と最新、重み1）
-        for (let i = availablePoints - 1; i >= 1; i--) {
-          const startIndex = locations.length - availablePoints + (availablePoints - 1 - i)
-          const endIndex = locations.length - 1
+        // 速度に応じて使用する点の数を調整
+        // 高速（40km/h以上）の場合は最新3点のみ、それ以外は4点を使用
+        const usePoints = speed >= 11.1 ? Math.min(3, availablePoints) : availablePoints // 40km/h = 11.1 m/s
+        const startOffset = locations.length - usePoints
 
-          if (startIndex >= 0 && endIndex > startIndex) {
+        // 連続する点同士を結んでheadingを計算（カーブ走行時も正確に反映）
+        // 直近のポイントをより重視する重み付け
+        // 例: 4点ある場合（低速時）
+        // - 点3と点4（最新2点、重み10）
+        // - 点2と点3（2点前と3点前、重み3）
+        // - 点1と点2（3点前と2点前、重み1）
+        // 例: 3点ある場合（高速時）
+        // - 点2と点3（最新2点、重み10）
+        // - 点1と点2（2点前と3点前、重み3）
+        for (let i = usePoints - 1; i >= 1; i--) {
+          const startIndex = startOffset + (usePoints - 1 - i)
+          const endIndex = startOffset + (usePoints - 1 - i) + 1
+
+          if (startIndex >= 0 && endIndex < locations.length && endIndex > startIndex) {
             const startLocation = locations[startIndex]
             const endLocation = locations[endIndex]
 
@@ -209,7 +218,7 @@ export default function Map({ locations, plannedRoute, onMapReady, userLocation 
             )
 
             // 距離が3メートル以上の場合は有効なheadingとして使用
-            // より新しい点ほど重みを大きく（最新2点は重み4、その次は重み2、さらに古い点は重み1）
+            // より新しい点ほど重みを大きく（最新2点は重み10、その次は重み3、さらに古い点は1）
             if (distance >= 3) {
               const calculatedBearing = calculateBearing(
                 startLocation.latitude,
@@ -218,8 +227,8 @@ export default function Map({ locations, plannedRoute, onMapReady, userLocation 
                 endLocation.longitude,
               )
 
-              // 重み: 最新の2点間は4、その次は2、さらに古い点は1
-              const weight = i === availablePoints - 1 ? 4 : i === availablePoints - 2 ? 2 : 1
+              // 重み: 最新の2点間は10（直近を重視）、その次は3、さらに古い点は1
+              const weight = i === usePoints - 1 ? 10 : i === usePoints - 2 ? 3 : 1
               bearings.push({ bearing: calculatedBearing, weight })
             }
           }
