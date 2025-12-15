@@ -138,7 +138,8 @@ export default function Map({ locations, plannedRoute, onMapReady, userLocation 
         Math.cos(lat1Rad) * Math.sin(lat2Rad) -
         Math.sin(lat1Rad) * Math.cos(lat2Rad) * Math.cos(dLon)
 
-      let bearing = (Math.atan2(y, x) * 180) / Math.PI
+      // atan2の引数の順序を修正（x, yの順序に変更）
+      let bearing = (Math.atan2(x, y) * 180) / Math.PI
       bearing = (bearing + 360) % 360 // 0-360度に正規化
 
       return bearing
