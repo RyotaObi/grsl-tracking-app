@@ -607,12 +607,13 @@ export default function RouteManagement() {
           style={{
             position: "fixed",
             // できるだけ下に配置しつつ、下部の「キャンセル」「設定」ボタンとかぶらないように少しだけ余白を確保
-            bottom: isMobile ? 80 : 160,
+            bottom: isMobile ? 80 : 70,
             left: isMobile ? 8 : 16,
             right: isMobile ? 8 : 16,
             zIndex: 1000,
             display: "flex",
             justifyContent: "center",
+            pointerEvents: "none", // 外側のdivはマップ操作を妨げない
           }}
         >
         <div
@@ -623,6 +624,7 @@ export default function RouteManagement() {
             borderRadius: isMobile ? 10 : 12,
             padding: isMobile ? 10 : 12,
             boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1)",
+            pointerEvents: "auto", // 白いダイアログボックス内は操作可能
           }}
         >
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: isMobile ? 6 : 8 }}>
@@ -733,7 +735,7 @@ export default function RouteManagement() {
       <div
         style={{
           position: "fixed",
-          bottom: isMobile ? 16 : 96,
+          bottom: isMobile ? 16 :20,
           left: "50%",
           transform: "translateX(-50%)",
           zIndex: 1000,
