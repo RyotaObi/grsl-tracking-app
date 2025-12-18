@@ -721,7 +721,8 @@ export default function RouteManagement() {
                   padding: isMobile ? "8px 10px" : "10px 12px",
                   borderRadius: isMobile ? 8 : 10,
                   border: "1px solid #d1d5db",
-                  fontSize: isMobile ? 11 : 12,
+                  // iOSでフォーカス時に自動ズームされないよう、モバイルでは16px以上にする
+                  fontSize: isMobile ? 16 : 13,
                   boxSizing: "border-box",
                 }}
               />
@@ -735,7 +736,7 @@ export default function RouteManagement() {
       <div
         style={{
           position: "fixed",
-          bottom: isMobile ? 16 :20,
+          bottom: isMobile ? 16 : 20,
           left: "50%",
           transform: "translateX(-50%)",
           zIndex: 1000,
@@ -750,13 +751,14 @@ export default function RouteManagement() {
         }}
       >
         {selectMode ? (
-          <>
+          routeSource === "create" ? (
+            // 新規ルート作成画面: 「キャンセル」ボタンのみを中央に表示
             <button
               onClick={handleCancel}
               style={{
                 backgroundColor: "#6b7280",
                 color: "white",
-                padding: isMobile ? "8px 12px" : "12px 20px",
+                padding: isMobile ? "8px 12px" : "10px 15px",
                 borderRadius: isMobile ? 10 : 14,
                 border: "none",
                 fontSize: isMobile ? 12 : 15,
@@ -772,41 +774,56 @@ export default function RouteManagement() {
               <X size={isMobile ? 14 : 18} />
               キャンセル
             </button>
-            <button
-              onClick={handleSelectRoute}
-              disabled={
-                (routeSource === "create" && editedRoute.length === 0) ||
-                (routeSource === "saved" && (!selectedSavedRouteId || editedRoute.length === 0))
-              }
-              style={{
-                backgroundColor:
-                  (routeSource === "create" && editedRoute.length === 0) ||
-                  (routeSource === "saved" && (!selectedSavedRouteId || editedRoute.length === 0))
-                    ? "#9ca3af"
-                    : "#3b82f6",
-                color: "white",
-                padding: isMobile ? "8px 16px" : "12px 24px",
-                borderRadius: isMobile ? 10 : 14,
-                border: "none",
-                fontSize: isMobile ? 12 : 15,
-                fontWeight: 700,
-                cursor:
-                  (routeSource === "create" && editedRoute.length === 0) ||
-                  (routeSource === "saved" && (!selectedSavedRouteId || editedRoute.length === 0))
-                    ? "not-allowed"
-                    : "pointer",
-                boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1)",
-                display: "flex",
-                alignItems: "center",
-                gap: isMobile ? 4 : 6,
-                whiteSpace: "nowrap",
-                maxWidth: isMobile ? "none" : 300,
-              }}
-            >
-              <Check size={isMobile ? 14 : 18} />
-              {isMobile ? "設定" : "このルートを設定する"}
-            </button>
-          </>
+          ) : (
+            // 保存済みルート選択画面: これまで通り「キャンセル」と「このルートを設定する」を表示
+            <>
+              <button
+                onClick={handleCancel}
+                style={{
+                  backgroundColor: "#6b7280",
+                  color: "white",
+                  padding: isMobile ? "8px 12px" : "12px 20px",
+                  borderRadius: isMobile ? 10 : 14,
+                  border: "none",
+                  fontSize: isMobile ? 10 : 15,
+                  fontWeight: 700,
+                  cursor: "pointer",
+                  boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1)",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: isMobile ? 4 : 6,
+                  whiteSpace: "nowrap",
+                }}
+              >
+                <X size={isMobile ? 14 : 18} />
+                キャンセル
+              </button>
+              <button
+                onClick={handleSelectRoute}
+                disabled={!selectedSavedRouteId || editedRoute.length === 0}
+                style={{
+                  backgroundColor:
+                    !selectedSavedRouteId || editedRoute.length === 0 ? "#9ca3af" : "#3b82f6",
+                  color: "white",
+                  padding: isMobile ? "8px 16px" : "12px 24px",
+                  borderRadius: isMobile ? 10 : 14,
+                  border: "none",
+                  fontSize: isMobile ? 12 : 15,
+                  fontWeight: 700,
+                  cursor: !selectedSavedRouteId || editedRoute.length === 0 ? "not-allowed" : "pointer",
+                  boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1)",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: isMobile ? 4 : 6,
+                  whiteSpace: "nowrap",
+                  maxWidth: isMobile ? "none" : 300,
+                }}
+              >
+                <Check size={isMobile ? 14 : 18} />
+                {isMobile ? "設定" : "このルートを設定する"}
+              </button>
+            </>
+          )
         ) : (
           <button
             onClick={handleSetRoute}
