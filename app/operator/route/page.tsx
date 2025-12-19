@@ -714,7 +714,7 @@ export default function RouteManagement() {
                 type="text"
                 value={customRouteName}
                 onChange={(e) => setCustomRouteName(e.target.value)}
-                placeholder="カスタムルート名（任意）"
+                placeholder="ルート名を入力してください"
                 style={{
                   marginTop: isMobile ? 6 : 8,
                   width: "100%",
