@@ -356,9 +356,11 @@ export default function OperatorHome() {
 
             {days.map(({ day, dateStr }) => {
               const daySchedules = getDaySchedules(dateStr)
-              const isOperating = daySchedules.some((s) => s.isOperating)
+              // 有効な運行予定（isOperating: true）だけをフィルタリング
+              const operatingSchedules = daySchedules.filter((s) => s.isOperating)
+              const isOperating = operatingSchedules.length > 0
               const isSelected = selectedDate === dateStr
-              const scheduleCount = daySchedules.length
+              const scheduleCount = operatingSchedules.length
 
               return (
                 <button

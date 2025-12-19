@@ -321,7 +321,7 @@ export default function Home() {
     <main className="w-full h-screen relative overflow-hidden">
       <div className="absolute inset-0" style={{ zIndex: 1 }}>
         <MapWrapper
-          locations={locations}
+          locations={isOperating ? locations : []}
           onMapReady={setMap}
           userLocation={userLocation}
           plannedRoute={plannedRoute} // Simplified - route already controlled by useEffect
