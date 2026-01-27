@@ -328,33 +328,7 @@ export default function Home() {
         />
       </div>
 
-      {!isOperating && (
-        <div
-          style={{
-            position: "absolute",
-            inset: 0,
-            backgroundColor: "rgba(255, 255, 255, 0.85)",
-            zIndex: 2,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            pointerEvents: "none",
-          }}
-        >
-          <div
-            style={{
-              textAlign: "center",
-              padding: "32px",
-              color: "#000",
-              // PC と同じサンセリフ系フォントスタックを明示的に指定
-              fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
-            }}
-          >
-            <div style={{ fontSize: "25px", fontWeight: "500", lineHeight: "1.6" }}>位置情報のテストは終了しています</div>
-          </div>
-        </div>
-      )}
-      {/* {!isOperating && nextOperation && (
+      {!isOperating && nextOperation && (
         <div
           style={{
             position: "absolute",
@@ -388,7 +362,7 @@ export default function Home() {
             </div>
           </div>
         </div>
-      )} */}
+      )}
 
       {isOperating && (
         <div
