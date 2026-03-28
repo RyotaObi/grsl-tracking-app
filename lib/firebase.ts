@@ -273,6 +273,17 @@ export async function getMonthSchedule(yearMonth: string): Promise<MonthSchedule
   }
 }
 
+/** "9:00" と "09:00" が混在しても比較が正しくなるよう HH:mm に揃える（文字列比較バグ対策） */
+function normalizeTimeForCompare(timeStr: string): string {
+  const trimmed = String(timeStr).trim()
+  const match = trimmed.match(/^(\d{1,2}):(\d{1,2})$/)
+  if (!match) return trimmed
+  const h = parseInt(match[1], 10)
+  const m = parseInt(match[2], 10)
+  if (Number.isNaN(h) || Number.isNaN(m)) return trimmed
+  return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`
+}
+
 export async function getCurrentScheduleStatus(): Promise<{
   isOperating: boolean
   schedule: DaySchedule | null
@@ -297,11 +308,16 @@ export async function getCurrentScheduleStatus(): Promise<{
     }
 
     const daySchedules = Array.isArray(schedule[dateStr]) ? schedule[dateStr] : [schedule[dateStr]]
-    const currentTime = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`
+    const currentTime = normalizeTimeForCompare(
+      `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`,
+    )
 
     // 現在の時間に該当するスケジュールを探す
     const activeSchedule = daySchedules.find(
-      (s) => s.isOperating && currentTime >= s.startTime && currentTime <= s.endTime,
+      (s) =>
+        s.isOperating &&
+        currentTime >= normalizeTimeForCompare(s.startTime) &&
+        currentTime <= normalizeTimeForCompare(s.endTime),
     )
 
     if (activeSchedule) {
@@ -347,14 +363,20 @@ async function findNextOperation(fromDate: Date): Promise<
 
       if (operatingSchedules.length === 0) continue
 
-      const currentTime = `${String(fromDate.getHours()).padStart(2, "0")}:${String(fromDate.getMinutes()).padStart(2, "0")}`
+      const currentTime = normalizeTimeForCompare(
+        `${String(fromDate.getHours()).padStart(2, "0")}:${String(fromDate.getMinutes()).padStart(2, "0")}`,
+      )
 
       // 同日の場合は、運行開始時刻が現在時刻より後のスケジュールを探す
       if (i === 0) {
-        const futureSchedules = operatingSchedules.filter((s) => s.startTime > currentTime)
+        const futureSchedules = operatingSchedules.filter(
+          (s) => normalizeTimeForCompare(s.startTime) > currentTime,
+        )
         if (futureSchedules.length > 0) {
           // 最も近い未来のスケジュールを選択
-          const nextSchedule = futureSchedules.sort((a, b) => a.startTime.localeCompare(b.startTime))[0]
+          const nextSchedule = futureSchedules.sort((a, b) =>
+            normalizeTimeForCompare(a.startTime).localeCompare(normalizeTimeForCompare(b.startTime)),
+          )[0]
           return {
             date: `${checkDate.getMonth() + 1}/${checkDate.getDate()}`,
             dayOfWeek: dayNames[checkDate.getDay()],
@@ -369,7 +391,9 @@ async function findNextOperation(fromDate: Date): Promise<
       }
 
       // 他の日の場合は、最初のスケジュールを返す
-      const firstSchedule = operatingSchedules.sort((a, b) => a.startTime.localeCompare(b.startTime))[0]
+      const firstSchedule = operatingSchedules.sort((a, b) =>
+        normalizeTimeForCompare(a.startTime).localeCompare(normalizeTimeForCompare(b.startTime)),
+      )[0]
       return {
         date: `${checkDate.getMonth() + 1}/${checkDate.getDate()}`,
         dayOfWeek: dayNames[checkDate.getDay()],

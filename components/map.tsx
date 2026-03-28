@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useRef } from "react"
+import { useEffect, useRef, useState } from "react"
 import type { LocationData } from "@/lib/types"
 
 interface MapProps {
@@ -18,6 +18,7 @@ export default function Map({ locations, plannedRoute, onMapReady, userLocation 
   const leafletRef = useRef<any>(null)
   const userMarkerRef = useRef<any | null>(null)
   const lastValidHeadingRef = useRef<number>(0) // 最後の有効なheadingの値を保持（初期値は0）
+  const [leafletReady, setLeafletReady] = useState(false)
 
   useEffect(() => {
     const loadLeaflet = async () => {
@@ -33,6 +34,7 @@ export default function Map({ locations, plannedRoute, onMapReady, userLocation 
       })
 
       leafletRef.current = L.default
+      setLeafletReady(true)
     }
 
     loadLeaflet()
@@ -79,7 +81,7 @@ export default function Map({ locations, plannedRoute, onMapReady, userLocation 
         mapRef.current = null
       }
     }
-  }, [onMapReady, leafletRef.current])
+  }, [onMapReady, leafletReady])
 
   useEffect(() => {
     if (!mapRef.current || !leafletRef.current) return
